@@ -15,6 +15,12 @@ Follow this structure when generating a Campaign Article. The tone should be mor
 
 [Bridge: 1–2 sentences. Briefly state what the campaign is and why it matters to the reader.]
 
+## Key takeaways
+
+- [Takeaway 1 — the headline benefit or prize pool]
+- [Takeaway 2 — who can participate and what to do]
+- [Takeaway 3 — a unique mechanic or time-sensitive hook]
+
 ## What is [Campaign Name]?
 
 [2–3 paragraphs covering:]
@@ -70,16 +76,6 @@ Follow this structure when generating a Campaign Article. The tone should be mor
 - How winners are selected (if applicable)
 - Any caps or limits
 
-## Terms and conditions
-
-- [Key condition 1 — e.g., "Participants must complete Level 1 KYC before the campaign end date"]
-- [Key condition 2 — e.g., "Sub-accounts and institutional accounts are not eligible"]
-- [Key condition 3 — e.g., "Bybit reserves the right to disqualify accounts engaged in wash trading"]
-- [Key condition 4 — e.g., "Rewards will be distributed within 14 business days after the campaign ends"]
-- [Add more as needed]
-
-[Note: Link to full T&C if available. E.g., "For the complete terms and conditions, visit [Campaign Page]."]
-
 ## [Start/Join/Don't miss out on] [Campaign Name]
 
 [1–2 sentence closing. Playful, direct, urgent. Restate the key benefit or prize.]
@@ -97,5 +93,6 @@ Follow this structure when generating a Campaign Article. The tone should be mor
 - **Amounts**: Always include token symbol. Use commas for 1,000+.
 - **Urgency**: Reference the campaign end date or limited spots if applicable.
 - **Clarity on mechanics**: The "How to participate" section is the most important. A reader who only skims this section should understand exactly what to do.
-- **T&C**: Always include this section. Even if the user's brief doesn't provide full T&C, include the most common conditions (KYC, sub-accounts, wash trading, distribution timeline).
+- **Key takeaways**: Always include 3 bullet points after the intro — readers scan for these first.
+- **No T&C section**: Do not include a terms and conditions section in the article.
 - **No overpromising**: Don't guarantee returns or specific outcomes. Use "up to" for prize pools.
