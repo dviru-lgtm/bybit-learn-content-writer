@@ -289,6 +289,9 @@ def stream_generate_article(
             httpx.RemoteProtocolError,
             httpx.ReadError,
             httpx.ReadTimeout,
+            httpx.ConnectTimeout,
+            anthropic.APITimeoutError,
+            anthropic.APIConnectionError,
         ) as e:
             last_error = e
             if attempt < MAX_RETRIES - 1:
@@ -369,6 +372,9 @@ def stream_revise_article(
             httpx.RemoteProtocolError,
             httpx.ReadError,
             httpx.ReadTimeout,
+            httpx.ConnectTimeout,
+            anthropic.APITimeoutError,
+            anthropic.APIConnectionError,
         ) as e:
             last_error = e
             if attempt < MAX_RETRIES - 1:
