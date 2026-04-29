@@ -40,6 +40,19 @@ def _make_client(api_key: str = "") -> anthropic.Anthropic:
     )
 
 
+def test_connection(api_key: str = "") -> str:
+    try:
+        client = _make_client(api_key)
+        resp = client.messages.create(
+            model=DEFAULT_MODEL,
+            max_tokens=10,
+            messages=[{"role": "user", "content": "Say OK"}],
+        )
+        return f"Connected. Model: {resp.model}"
+    except Exception as e:
+        return f"FAILED: {type(e).__name__}: {e}"
+
+
 def load_prompt_file(filename: str) -> str:
     filepath = PROMPTS_DIR / filename
     if filepath.exists():

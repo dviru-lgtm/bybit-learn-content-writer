@@ -8,11 +8,12 @@ import streamlit as st
 from utils.image_utils import process_uploaded_file
 from utils.claude_api import (
     build_user_message,
-    stream_generate_article,
-    stream_revise_article,
+    generate_article,
+    revise_article,
+    test_connection,
     DEFAULT_MODEL,
     MODEL_OPTIONS,
-    PROXY_BASE_URL as PROXY_BASE_URL,
+    PROXY_BASE_URL,
 )
 
 # --- Page config ---
@@ -36,8 +37,6 @@ if "brief" not in st.session_state:
     st.session_state.brief = {}
 if "revision_count" not in st.session_state:
     st.session_state.revision_count = 0
-if "is_generating" not in st.session_state:
-    st.session_state.is_generating = False
 
 
 def count_words(text: str) -> int:
@@ -51,7 +50,6 @@ def reset_article():
     st.session_state.screenshots_processed = []
     st.session_state.brief = {}
     st.session_state.revision_count = 0
-    st.session_state.is_generating = False
 
 
 # --- Sidebar ---
@@ -61,7 +59,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Proxy API key
     api_key = st.text_input(
         "API Key",
         type="password",
@@ -69,7 +66,6 @@ with st.sidebar:
         help="LiteLLM proxy API key (starts with sk-).",
     )
 
-    # Model selection
     model_label = st.selectbox(
         "Model",
         options=list(MODEL_OPTIONS.keys()),
@@ -77,13 +73,20 @@ with st.sidebar:
     )
     model = MODEL_OPTIONS[model_label]
 
+    if st.button("Test connection", use_container_width=True):
+        with st.spinner("Testing..."):
+            result = test_connection(api_key)
+        if result.startswith("Connected"):
+            st.success(result)
+        else:
+            st.error(result)
+
     st.divider()
 
-    # Session info
     if st.session_state.article_generated:
         st.markdown("### Current article")
-        article_type = st.session_state.brief.get("article_type", "Unknown")
-        st.markdown(f"**Type:** {article_type}")
+        article_type_display = st.session_state.brief.get("article_type", "Unknown")
+        st.markdown(f"**Type:** {article_type_display}")
         st.markdown(f"**Word count:** {count_words(st.session_state.article_text):,}")
         st.markdown(f"**Revisions:** {st.session_state.revision_count}")
         st.markdown(f"**Screenshots:** {len(st.session_state.screenshots_processed)}")
@@ -93,6 +96,11 @@ with st.sidebar:
         if st.button("🔄 New article", use_container_width=True):
             reset_article()
             st.rerun()
+
+    with st.expander("Debug info"):
+        st.text(f"Proxy: {PROXY_BASE_URL}")
+        st.text(f"Key: {api_key[:8]}..." if api_key else "Key: (empty)")
+        st.text(f"Model: {model}")
 
 
 # --- Main content ---
@@ -104,7 +112,6 @@ if not api_key:
 if not st.session_state.article_generated:
     st.header("Create a new article")
 
-    # Article type
     article_type = st.radio(
         "Article type",
         options=["Product Explainer", "Campaign Article"],
@@ -114,9 +121,7 @@ if not st.session_state.article_generated:
 
     type_key = "product_explainer" if article_type == "Product Explainer" else "campaign"
 
-    # Default word counts
     default_wc = 1750 if type_key == "product_explainer" else 1000
-    wc_range = (1500, 2000) if type_key == "product_explainer" else (800, 1200)
 
     # Screenshot upload (outside form to avoid Streamlit file_uploader bug)
     st.markdown("---")
@@ -196,7 +201,6 @@ if not st.session_state.article_generated:
         )
 
     if submitted:
-        # Validate required fields
         if not name:
             st.error("Please enter a product/campaign name.")
             st.stop()
@@ -206,7 +210,6 @@ if not st.session_state.article_generated:
         if type_key == "product_explainer" and not uploaded_files:
             st.warning("No screenshots uploaded. The article will include generic screenshot placeholders.")
 
-        # Process screenshots
         processed_screenshots = []
         if uploaded_files:
             with st.spinner("Processing screenshots..."):
@@ -215,7 +218,6 @@ if not st.session_state.article_generated:
                     processed["caption"] = screenshot_captions.get(i, "")
                     processed_screenshots.append(processed)
 
-        # Build brief
         brief = {
             "article_type": article_type,
             "name": name,
@@ -230,39 +232,25 @@ if not st.session_state.article_generated:
         st.session_state.brief = brief
         st.session_state.screenshots_processed = processed_screenshots
 
-        # Generate article with streaming
-        with st.spinner(""):
-            article_placeholder = st.empty()
-            full_text = ""
-
+        with st.status("Generating article...", expanded=True) as status:
+            st.write("Sending brief to Claude...")
             try:
-                for chunk, is_done, current_text, history in stream_generate_article(
+                article_text, history = generate_article(
                     brief=brief,
                     screenshots=processed_screenshots,
                     article_type=type_key,
                     model=model,
                     api_key=api_key,
-                ):
-                    if not is_done:
-                        full_text = current_text
-                        article_placeholder.markdown(full_text)
-                    else:
-                        st.session_state.article_text = current_text
-                        st.session_state.conversation_history = history
-                        st.session_state.article_generated = True
+                )
+                st.session_state.article_text = article_text
+                st.session_state.conversation_history = history
+                st.session_state.article_generated = True
+                status.update(label="Article generated!", state="complete")
 
             except Exception as e:
-                if full_text:
-                    st.warning(f"Connection error: {e}\n\nShowing partial output — you can revise or retry.")
-                    st.session_state.article_text = full_text
-                    st.session_state.conversation_history = [
-                        {"role": "user", "content": build_user_message(brief, processed_screenshots)},
-                        {"role": "assistant", "content": full_text},
-                    ]
-                    st.session_state.article_generated = True
-                else:
-                    st.error(f"Error generating article: {e}")
-                    st.stop()
+                status.update(label="Generation failed", state="error")
+                st.error(f"Error generating article: {e}")
+                st.stop()
 
         st.rerun()
 
@@ -271,21 +259,17 @@ if not st.session_state.article_generated:
 else:
     st.header(st.session_state.brief.get("name", "Article"))
 
-    # Article display
     st.markdown(st.session_state.article_text)
 
     st.divider()
 
-    # Action buttons
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        # Copy to clipboard (via st.code workaround)
         if st.button("📋 Copy markdown", use_container_width=True):
             st.code(st.session_state.article_text, language="markdown")
 
     with col2:
-        # Download as .md file
         article_name = st.session_state.brief.get("name", "article").lower().replace(" ", "-")
         st.download_button(
             "⬇️ Download .md",
@@ -300,7 +284,6 @@ else:
             reset_article()
             st.rerun()
 
-    # Revision interface
     st.divider()
     st.subheader("Revisions")
 
@@ -315,32 +298,29 @@ else:
         if not revision_input:
             st.warning("Please enter your revision request.")
         else:
-            article_placeholder = st.empty()
-            full_text = ""
-
             type_key = (
                 "product_explainer"
                 if st.session_state.brief.get("article_type") == "Product Explainer"
                 else "campaign"
             )
 
-            try:
-                for chunk, is_done, current_text, history in stream_revise_article(
-                    revision_request=revision_input,
-                    conversation_history=st.session_state.conversation_history,
-                    article_type=type_key,
-                    model=model,
-                    api_key=api_key,
-                ):
-                    if not is_done:
-                        full_text = current_text
-                        article_placeholder.markdown(full_text)
-                    else:
-                        st.session_state.article_text = current_text
-                        st.session_state.conversation_history = history
-                        st.session_state.revision_count += 1
+            with st.status("Revising article...", expanded=True) as status:
+                st.write("Applying feedback...")
+                try:
+                    revised_text, history = revise_article(
+                        revision_request=revision_input,
+                        conversation_history=st.session_state.conversation_history,
+                        article_type=type_key,
+                        model=model,
+                        api_key=api_key,
+                    )
+                    st.session_state.article_text = revised_text
+                    st.session_state.conversation_history = history
+                    st.session_state.revision_count += 1
+                    status.update(label="Revision complete!", state="complete")
 
-            except Exception as e:
-                st.error(f"Error during revision: {e}")
+                except Exception as e:
+                    status.update(label="Revision failed", state="error")
+                    st.error(f"Error during revision: {e}")
 
             st.rerun()
