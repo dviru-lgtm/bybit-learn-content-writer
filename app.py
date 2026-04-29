@@ -118,6 +118,31 @@ if not st.session_state.article_generated:
     default_wc = 1750 if type_key == "product_explainer" else 1000
     wc_range = (1500, 2000) if type_key == "product_explainer" else (800, 1200)
 
+    # Screenshot upload (outside form to avoid Streamlit file_uploader bug)
+    st.markdown("---")
+    screenshots_label = (
+        "Upload screenshots *" if type_key == "product_explainer"
+        else "Upload campaign creatives (optional)"
+    )
+    uploaded_files = st.file_uploader(
+        screenshots_label,
+        type=["png", "jpg", "jpeg", "gif", "webp"],
+        accept_multiple_files=True,
+        help="Drag and drop or browse. For Product Explainers, upload screenshots in the order they appear in the tutorial.",
+    )
+
+    screenshot_captions = {}
+    if uploaded_files:
+        st.markdown("**Screenshot captions** (optional — helps with placement)")
+        for i, f in enumerate(uploaded_files):
+            screenshot_captions[i] = st.text_input(
+                f"Caption for {f.name}",
+                key=f"caption_{i}",
+                placeholder=f"e.g., Step {i+1}: Navigate to the trading page",
+            )
+
+    st.markdown("---")
+
     with st.form("brief_form"):
         col1, col2 = st.columns(2)
 
@@ -163,30 +188,6 @@ if not st.session_state.article_generated:
             value=default_wc,
             step=100,
         )
-
-        # Screenshot upload
-        st.markdown("---")
-        screenshots_label = (
-            "Upload screenshots *" if type_key == "product_explainer"
-            else "Upload campaign creatives (optional)"
-        )
-        uploaded_files = st.file_uploader(
-            screenshots_label,
-            type=["png", "jpg", "jpeg", "gif", "webp"],
-            accept_multiple_files=True,
-            help="Drag and drop or browse. For Product Explainers, upload screenshots in the order they appear in the tutorial.",
-        )
-
-        # Screenshot captions
-        screenshot_captions = {}
-        if uploaded_files:
-            st.markdown("**Screenshot captions** (optional — helps with placement)")
-            for i, f in enumerate(uploaded_files):
-                screenshot_captions[i] = st.text_input(
-                    f"Caption for {f.name}",
-                    key=f"caption_{i}",
-                    placeholder=f"e.g., Step {i+1}: Navigate to the trading page",
-                )
 
         submitted = st.form_submit_button(
             "✨ Generate article",
