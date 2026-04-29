@@ -65,8 +65,8 @@ with st.sidebar:
     api_key = st.text_input(
         "API Key",
         type="password",
-        value=os.environ.get("LITELLM_API_KEY", ""),
-        help="LiteLLM proxy API key. Or set LITELLM_API_KEY env var.",
+        value=os.environ.get("ANTHROPIC_AUTH_TOKEN", os.environ.get("LITELLM_API_KEY", "")),
+        help="LiteLLM proxy API key (starts with sk-).",
     )
 
     # Model selection
